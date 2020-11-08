@@ -1,0 +1,102 @@
+buildscript {
+    ext.kotlin_version = '1.4.10'
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: 'kotlin'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'groovy'
+apply plugin: 'maven'
+
+group 'com.github.bhlangonijr.kengine'
+version '0.1.1'
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.github.bhlangonijr.kengine.MainKt'
+    }
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    compile 'com.github.bhlangonijr:chesslib:1.1.25'
+
+    testCompile "junit:junit:4.12"
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+// Tasks
+test {
+    String testType = System.properties['test.type']
+    if (testType == 'integration') {
+        include '**/*IntegrationTest.*'
+        include '**/*IntegrationSpec.*'
+    } else if (testType == 'unit') {
+        include '**/*Test.*'
+        include '**/*Spec.*'
+        exclude '**/*IntegrationTest.*'
+        exclude '**/*IntegrationSpec.*'
+    } else if (testType == 'all') {
+        include '**/*Test.*'
+        include '**/*Spec.*'
+    } else {
+        //Default to unit
+        include '**/*Test.*'
+        include '**/*Spec.*'
+        exclude '**/*IntegrationTest.*'
+        exclude '**/*IntegrationSpec.*'
+    }
+
+    // Prints getResults of test inline
+    afterSuite { desc, result ->
+        // Don't report on modules with no test suites
+        if (!desc.className) {
+            return
+        }
+
+        String testStatus
+        if (System.properties['nocolor']) {
+            testStatus = result.resultType
+        } else if (result.resultType != TestResult.ResultType.SUCCESS) {
+            // Print in red if failed
+            testStatus = "\033[31m${result.resultType}\033[0m"
+        } else {
+            // Print in green if success/skipped
+            testStatus = "\033[32m${result.resultType}\033[0m"
+        }
+        println "Test suite ${desc.name}: ${testStatus}"
+    }
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs the integration tests :D'
+    group = 'Verification'
+    include '**/*IntegrationTest.*'
+    include '**/*IntegrationSpec.*'
+    afterSuite { desc, result ->
+        if (desc.className) {
+            println "Test suite ${desc.name}: ${result.resultType}"
+        }
+    }
+}

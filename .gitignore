@@ -1,0 +1,49 @@
+############################
+# Gradle / Maven generated #
+############################
+target
+build
+.gradle
+pom.xml.releaseBackup
+release.properties
+*.class
+
+#############
+# Junit tmp #
+#############
+junit*.properties
+
+###########
+# Eclipse #
+###########
+.classpath
+.project
+.settings
+
+############
+# IntelliJ #
+############
+.idea
+*.iml
+*.ipr
+*.iws
+bin
+out
+exportToHTML
+
+#################
+# Package Files #
+#################
+#*.jar
+*.war
+*.ear
+
+###########
+# General #
+###########
+.DS_Store
+out.*
+apicheck-results
+stacktrace.log
+.history
+*.ser
