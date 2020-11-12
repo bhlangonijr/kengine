@@ -29,7 +29,7 @@ class Node(val move: Move,
         return selected
     }
 
-    fun expand(moves: MoveList, side: Side): List<Node>? {
+    fun expand(moves: List<Move>, side: Side): List<Node>? {
 
         if (children.isEmpty()) {
             synchronized(this as Any) {

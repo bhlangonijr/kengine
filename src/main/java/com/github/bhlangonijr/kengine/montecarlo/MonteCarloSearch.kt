@@ -86,7 +86,7 @@ class MonteCarloSearch(private var temperature: Double = DEFAULT_TEMPERATURE, pr
             }
             node.isLeaf() -> {
                 if (ply == 0 && state.params.searchMoves.isNotBlank()) {
-                    val searchMoves = MoveList()
+                    val searchMoves = arrayListOf<Move>()
                     searchMoves.addAll(moves
                             .stream()
                             .filter { state.params.searchMoves.contains(it.toString()) }
@@ -123,7 +123,7 @@ class MonteCarloSearch(private var temperature: Double = DEFAULT_TEMPERATURE, pr
         var m: Move? = null
         return try {
 
-            val moves = MoveGenerator.generateLegalMoves(board)
+            val moves = board.legalMoves()
             val isKingAttacked = board.isKingAttacked
             when {
                 moves.size == 0 && isKingAttacked -> -1L

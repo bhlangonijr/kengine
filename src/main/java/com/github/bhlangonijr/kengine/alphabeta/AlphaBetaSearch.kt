@@ -5,8 +5,6 @@ import com.github.bhlangonijr.chesslib.Piece
 import com.github.bhlangonijr.chesslib.Side
 import com.github.bhlangonijr.chesslib.Square
 import com.github.bhlangonijr.chesslib.move.Move
-import com.github.bhlangonijr.chesslib.move.MoveGenerator.generatePseudoLegalCaptures
-import com.github.bhlangonijr.chesslib.move.MoveGenerator.generatePseudoLegalMoves
 import com.github.bhlangonijr.chesslib.move.MoveList
 import com.github.bhlangonijr.kengine.SearchEngine
 import com.github.bhlangonijr.kengine.SearchState
@@ -197,26 +195,26 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
     private fun generateMoves(state: SearchState, ply: Int, hashMove: Move, quiesce: Boolean): List<Move> {
 
         return when {
-            quiesce -> orderMoves(state, hashMove, generatePseudoLegalCaptures(state.board))
-            ply == 0 -> orderRootMoves(state, generatePseudoLegalMoves(state.board))
-            else -> orderMoves(state, hashMove, generatePseudoLegalMoves(state.board))
+            quiesce -> orderMoves(state, hashMove, state.board.pseudoLegalCaptures())
+            ply == 0 -> orderRootMoves(state, state.board.pseudoLegalMoves())
+            else -> orderMoves(state, hashMove, state.board.pseudoLegalMoves())
         }
     }
 
-    private fun orderMoves(state: SearchState, hashMove: Move, moves: MoveList): List<Move> {
+    private fun orderMoves(state: SearchState, hashMove: Move, moves: List<Move>): List<Move> {
 
         if (state.moveScore.size == 0) return moves
-        return moves.sortedWith(Comparator { o1, o2 ->
+        return moves.sortedWith { o1, o2 ->
             (moveScore(o1, hashMove, state) - moveScore(o2, hashMove, state)).toInt()
-        }).reversed()
+        }.reversed()
     }
 
-    private fun orderRootMoves(state: SearchState, moves: MoveList): List<Move> {
+    private fun orderRootMoves(state: SearchState, moves: List<Move>): List<Move> {
 
         if (state.moveScore.size == 0) return moves
-        return moves.sortedWith(Comparator { o1, o2 ->
+        return moves.sortedWith { o1, o2 ->
             (rootMoveScore(o1, state) - rootMoveScore(o2, state)).toInt()
-        }).reversed()
+        }.reversed()
     }
 
     private fun rootMoveScore(move: Move, state: SearchState) = state.moveScore[move.toString()] ?: -Long.MAX_VALUE
