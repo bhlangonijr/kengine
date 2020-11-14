@@ -34,7 +34,7 @@ repositories {
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    compile 'com.github.bhlangonijr:chesslib:1.2.0'
+    compile 'com.github.bhlangonijr:chesslib:1.2.1'
 
     testCompile "junit:junit:4.12"
 }
