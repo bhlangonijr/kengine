@@ -1,8 +1,6 @@
 package com.github.bhlangonijr.kengine.alphabeta
 
 import com.github.bhlangonijr.chesslib.Board
-import com.github.bhlangonijr.chesslib.Square
-import com.github.bhlangonijr.chesslib.move.Move
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -36,17 +34,16 @@ class TranspositionTableTest {
 
         val board = Board()
         board.loadFromFen("r1b1kb1r/ppp2ppp/8/4n3/4n3/PPP1P3/6PP/RNBK1BNR w kq - 0 19")
-        val move = Move(Square.D1, Square.E2)
         val tt = TranspositionTable(8)
 
-        tt.put(board.hashCode(), 100, 10, move, TranspositionTable.NodeType.EXACT)
+        tt.put(board.hashCode(), 100, 10, TranspositionTable.NodeType.EXACT)
 
         val entry = tt.get(board.hashCode())
 
         assertEquals(entry?.key, board.hashCode())
 
         for (k in keys) {
-            tt.put(k, Random.nextLong(1000), Random.nextInt(1000), move, TranspositionTable.NodeType.EXACT)
+            tt.put(k, Random.nextLong(1000), Random.nextInt(1000), TranspositionTable.NodeType.EXACT)
         }
 
         for (k in keys) {

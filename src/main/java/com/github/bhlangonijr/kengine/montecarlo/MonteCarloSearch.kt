@@ -4,7 +4,6 @@ import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Square
 import com.github.bhlangonijr.chesslib.move.Move
 import com.github.bhlangonijr.chesslib.move.MoveGenerator
-import com.github.bhlangonijr.chesslib.move.MoveList
 import com.github.bhlangonijr.kengine.SearchEngine
 import com.github.bhlangonijr.kengine.SearchState
 import com.github.bhlangonijr.kengine.eval.Evaluator

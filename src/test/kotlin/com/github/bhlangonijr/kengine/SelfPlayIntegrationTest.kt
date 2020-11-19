@@ -40,7 +40,7 @@ class SelfPlayIntegrationTest {
 
         val abts = AlphaBetaSearch()
         val moves = MoveList(board.fen)
-        val state = SearchState(SearchParams(depth = 4), board)
+        val state = SearchState(SearchParams(depth = 7), board)
         while (!board.isDraw && !board.isMated) {
             println("Search: ${board.fen} - \n$board")
             val move = abts.rooSearch(state)
@@ -50,6 +50,33 @@ class SelfPlayIntegrationTest {
             }
         }
         printResult(moves, board)
+    }
+
+    @Test
+    fun `Search mate KQ vs K 2`() {
+
+        val board = Board()
+        board.loadFromFen("3k4/8/8/1KQ5/8/8/8/8 w - - 0 1")
+
+        val abts = AlphaBetaSearch()
+        val moves = MoveList(board.fen)
+        var move = Move(Square.NONE, Square.NONE)
+        try {
+            while (!board.isDraw && !board.isMated) {
+                println("Search: ${board.fen} - \n$board")
+                val state = SearchState(SearchParams(depth = 7), board)
+                move = abts.rooSearch(state)
+                if (move != Move(Square.NONE, Square.NONE) && board.doMove(move)) {
+                    moves += move
+                    println("Played: $move = ${board.fen}")
+                }
+            }
+            printResult(moves, board)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            println(board.fen)
+            println(move)
+        }
     }
 
     @Test

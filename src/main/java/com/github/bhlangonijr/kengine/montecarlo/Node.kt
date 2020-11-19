@@ -2,7 +2,6 @@ package com.github.bhlangonijr.kengine.montecarlo
 
 import com.github.bhlangonijr.chesslib.Side
 import com.github.bhlangonijr.chesslib.move.Move
-import com.github.bhlangonijr.chesslib.move.MoveList
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.ln

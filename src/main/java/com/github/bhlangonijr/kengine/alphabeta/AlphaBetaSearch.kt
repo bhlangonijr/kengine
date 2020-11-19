@@ -5,7 +5,6 @@ import com.github.bhlangonijr.chesslib.Piece
 import com.github.bhlangonijr.chesslib.Side
 import com.github.bhlangonijr.chesslib.Square
 import com.github.bhlangonijr.chesslib.move.Move
-import com.github.bhlangonijr.chesslib.move.MoveList
 import com.github.bhlangonijr.kengine.SearchEngine
 import com.github.bhlangonijr.kengine.SearchState
 import com.github.bhlangonijr.kengine.eval.Evaluator
@@ -50,25 +49,23 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
     private fun search(board: Board, alpha: Long, beta: Long, depth: Int, ply: Int, state: SearchState): Long {
 
         if (depth <= 0 || ply >= MAX_DEPTH) {
-            return quiesce(board, alpha, beta, depth, ply, state)
+            return quiesce(board, alpha, beta, ply, state)
         }
         state.nodes.incrementAndGet()
         if (state.shouldStop()) {
             return 0L
         }
-        if (board.isRepetition || board.isInsufficientMaterial) {
+        if (board.isRepetition && ply > 0) {
             return 0L
         }
 
         var bestScore = -Long.MAX_VALUE
         var newAlpha = alpha
         var newBeta = beta
-        var bestMove = emptyMove
-        var hashMove = emptyMove
+        var moveCounter = 0
 
         val entry = transpositionTable.get(board.hashCode())
         if (entry != null && entry.depth >= depth && ply > 0) {
-            hashMove = entry.move
             when (entry.nodeType) {
                 TranspositionTable.NodeType.EXACT -> {
                     return entry.value
@@ -91,25 +88,25 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             val score = -search(board, -newBeta, -newBeta + 1, depth - 3, ply + 1, state)
             board.undoMove()
             if (score >= newBeta) {
-                transpositionTable.put(board.hashCode(), score, depth, bestMove,
+                transpositionTable.put(board.hashCode(), score, depth,
                         TranspositionTable.NodeType.LOWERBOUND)
-                return score
+                return newBeta
             }
         }
 
-        val moves = generateMoves(state, ply, hashMove, false)
+        val moves = generateMoves(state, ply, false)
         for (move in moves) {
-
             if (!board.doMove(move)) {
                 continue
             }
-            val newDepth = if (isKingAttacked) depth else depth - 1
-
+            moveCounter++
             var score: Long
 
-            if (bestScore == -Long.MAX_VALUE || move == hashMove) {
+            if (moveCounter == 0) {
+                val newDepth = if (isKingAttacked) depth else depth - 1
                 score = -search(board, -newBeta, -newAlpha, newDepth, ply + 1, state)
             } else {
+                val newDepth = if (isKingAttacked) depth else depth - 1
                 score = -search(board, -newAlpha - 1, -newAlpha, newDepth, ply + 1, state)
                 if (score in (newAlpha + 1) until newBeta) {
                     score = -search(board, -newBeta, -newAlpha, newDepth, ply + 1, state)
@@ -121,45 +118,46 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
                 state.moveScore[move.toString()] = score
             }
             if (score >= newBeta) {
-                transpositionTable.put(board.hashCode(), score, depth, move,
+                transpositionTable.put(board.hashCode(), score, depth,
                         TranspositionTable.NodeType.LOWERBOUND)
                 return score
             }
             if (score > bestScore) {
                 bestScore = score
                 if (score > newAlpha) {
-                    bestMove = move
                     newAlpha = score
                     state.updatePv(move, ply)
                 }
             }
         }
 
+        if (moveCounter == 0) {
+            return if (isKingAttacked) -MATE_VALUE + ply else 0L
+        }
+
         val nodeType = when {
             bestScore > alpha -> TranspositionTable.NodeType.EXACT
             else -> TranspositionTable.NodeType.UPPERBOUND
         }
-        transpositionTable.put(board.hashCode(), bestScore, depth, bestMove, nodeType)
+        transpositionTable.put(board.hashCode(), bestScore, depth, nodeType)
 
-        if (bestScore == -Long.MAX_VALUE) {
-            return if (isKingAttacked) -MATE_VALUE + ply else 0L
-        }
         return bestScore
     }
 
-    fun quiesce(board: Board, alpha: Long, beta: Long, depth: Int, ply: Int, state: SearchState): Long {
+    fun quiesce(board: Board, alpha: Long, beta: Long, ply: Int, state: SearchState): Long {
 
         state.nodes.incrementAndGet()
 
-        if (state.shouldStop()) {
+        if (state.shouldStop() || ply >= MAX_DEPTH) {
             return 0
         }
-        if (board.isRepetition || board.isInsufficientMaterial) {
-            return 0L
+        if (board.isRepetition && ply > 0) {
+            return 0
         }
         var newAlpha = alpha
-
+        var moveCounter = 0
         var bestScore = evaluator.evaluate(state, board)
+
         if (bestScore >= beta) {
             return beta
         }
@@ -167,12 +165,13 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             newAlpha = bestScore
         }
 
-        val moves = generateMoves(state, ply, emptyMove, true)
+        val moves = generateMoves(state, ply, true)
         for (move in moves) {
             if (!board.doMove(move)) {
                 continue
             }
-            val score = -quiesce(board, -beta, -newAlpha, depth - 1, ply + 1, state)
+            moveCounter++
+            val score = -quiesce(board, -beta, -newAlpha, ply + 1, state)
             board.undoMove()
             if (score >= beta) {
                 return score
@@ -186,26 +185,26 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             }
         }
 
-        if (bestScore == -Long.MAX_VALUE && board.isKingAttacked) {
+        if (moveCounter == 0 && board.isKingAttacked) {
             return -MATE_VALUE + ply
         }
         return bestScore
     }
 
-    private fun generateMoves(state: SearchState, ply: Int, hashMove: Move, quiesce: Boolean): List<Move> {
+    private fun generateMoves(state: SearchState, ply: Int, quiesce: Boolean): List<Move> {
 
         return when {
-            quiesce -> orderMoves(state, hashMove, state.board.pseudoLegalCaptures())
+            quiesce -> orderMoves(state, state.board.pseudoLegalCaptures())
             ply == 0 -> orderRootMoves(state, state.board.pseudoLegalMoves())
-            else -> orderMoves(state, hashMove, state.board.pseudoLegalMoves())
+            else -> orderMoves(state, state.board.pseudoLegalMoves())
         }
     }
 
-    private fun orderMoves(state: SearchState, hashMove: Move, moves: List<Move>): List<Move> {
+    private fun orderMoves(state: SearchState, moves: List<Move>): List<Move> {
 
         if (state.moveScore.size == 0) return moves
         return moves.sortedWith { o1, o2 ->
-            (moveScore(o1, hashMove, state) - moveScore(o2, hashMove, state)).toInt()
+            (moveScore(o1, state) - moveScore(o2, state)).toInt()
         }.reversed()
     }
 
@@ -220,13 +219,12 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
     private fun rootMoveScore(move: Move, state: SearchState) = state.moveScore[move.toString()] ?: -Long.MAX_VALUE
 
     //mvv-lva
-    private fun moveScore(move: Move, hashMove: Move, state: SearchState): Long {
+    private fun moveScore(move: Move, state: SearchState): Long {
 
         val attackedPiece = state.board.getPiece(move.to)
         val attackingPiece = state.board.getPiece(move.from)
 
         return when {
-            move == hashMove -> MATE_VALUE
             attackedPiece != Piece.NONE -> (evaluator.pieceStaticValue(attackedPiece) -
                     evaluator.pieceStaticValue(attackingPiece)) + 10000
             move.promotion != null -> evaluator.pieceStaticValue(move.promotion) * 10

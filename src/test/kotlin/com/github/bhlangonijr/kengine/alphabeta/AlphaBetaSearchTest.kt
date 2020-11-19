@@ -132,7 +132,7 @@ class AlphaBetaSearchTest {
     fun `Search mate KQ vs K`() {
 
         val board = Board()
-        board.loadFromFen("5k2/7Q/8/8/8/8/8/1K6 w - - 22 12 - ")
+        board.loadFromFen("5k2/7Q/8/3K4/8/8/8/8 w - - 22 12")
 
         val params = SearchParams(depth = 7)
         val state = SearchState(params, board)
@@ -141,7 +141,7 @@ class AlphaBetaSearchTest {
         val bestMove = search.rooSearch(state)
         val whiteKingSquare = board.getPieceLocation(Piece.WHITE_KING)
         //get white king closer to black king
-        assertTrue(bestMove.from == whiteKingSquare[0] && bestMove.to.rank == Rank.RANK_2)
+        assertTrue(bestMove.from == whiteKingSquare[0] && bestMove.to.rank == Rank.RANK_6)
 
     }
 
@@ -155,7 +155,7 @@ class AlphaBetaSearchTest {
         val state = SearchState(params, board)
 
         val search = AlphaBetaSearch()
-        val score = search.quiesce(board, -MAX_VALUE, MAX_VALUE, 0, 1, state)
+        val score = search.quiesce(board, -MAX_VALUE, MAX_VALUE, 1, state)
         println("score = $score")
 
     }
@@ -170,7 +170,7 @@ class AlphaBetaSearchTest {
         val state = SearchState(params, board)
 
         val search = AlphaBetaSearch()
-        val score = search.quiesce(board, -MAX_VALUE, MAX_VALUE, 0, 1, state)
+        val score = search.quiesce(board, -MAX_VALUE, MAX_VALUE, 1, state)
         println("score = $score")
 
     }
