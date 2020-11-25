@@ -90,7 +90,7 @@ class Uci constructor(private var search: Search) {
                 movesToGo = getInt(tokens, "movestogo", "0"),
                 depth = getInt(tokens, "depth", "100"),
                 nodes = getLong(tokens, "nodes", "5000000000"),
-                infinite = getBoolean(tokens, "infinite", "false"),
+                infinite = getBoolean(tokens, "infinite", "true"),
                 ponder = getBoolean(tokens, "ponder", "false"),
                 searchMoves = getString(tokens, "searchmoves", ""),
                 threads = search.threads

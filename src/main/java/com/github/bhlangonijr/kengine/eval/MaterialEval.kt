@@ -92,8 +92,58 @@ class MaterialEval : Evaluator {
 
     override fun evaluate(state: SearchState, board: Board): Long {
 
-        return scoreMaterial(board) + scorePieceSquare(board)
+        return scoreHotspot(board) //+ scoreMaterial(board) //+ scorePieceSquare(board)
     }
+
+    private fun scoreHotspot(board: Board): Long {
+        val p = board.sideToMove
+        return scoreHotspot(board, p) - scoreHotspot(board, p.flip())
+    }
+
+    private fun scoreHotspot(board: Board, player: Side): Long {
+
+        var score = 0L
+        val heatMap = LongArray(64) { 0L }
+
+        PieceType.values().filterNot { it == PieceType.NONE }.forEach { p ->
+            val piece = Piece.make(player, p)
+            val pieces = board.bitboard
+
+            if (pieces != 0L) {
+                board.getPieceLocation(piece).forEach {
+                    var attacks = squareAttacksPieceType(board, it, player, piece.pieceType)
+                    score += bitCount(attacks)
+
+                    while (attacks != 0L) {
+                        val targetIndex = Bitboard.bitScanForward(attacks)
+                        attacks = Bitboard.extractLsb(attacks)
+                        heatMap[targetIndex] += 1L
+                    }
+                }
+            }
+        }
+
+        score += heatMap.reduce { acc, v -> acc + (v*3) }
+
+        return score
+    }
+
+    fun squareAttacksPieceType(board: Board, square: Square?,
+                               side: Side, type: PieceType?): Long {
+        val occ: Long = board.bitboard
+
+        return when (type) {
+            PieceType.PAWN -> Bitboard.getPawnAttacks(side.flip(), square)
+            PieceType.KNIGHT -> Bitboard.getKnightAttacks(square, occ)
+            PieceType.BISHOP -> Bitboard.getBishopAttacks(occ, square)
+            PieceType.ROOK -> Bitboard.getRookAttacks(occ, square)
+            PieceType.QUEEN -> Bitboard.getQueenAttacks(occ, square)
+            PieceType.KING -> Bitboard.getKingAttacks(square, occ)
+            else -> 0L
+        }
+
+    }
+
 
     override fun pieceStaticValue(piece: Piece): Long {
 
@@ -106,6 +156,8 @@ class MaterialEval : Evaluator {
             PieceType.KING -> MATE_VALUE
             else -> 0L
         }
+
+//        return 0L
     }
 
     override fun pieceSquareStaticValue(piece: Piece, square: Square): Long {
