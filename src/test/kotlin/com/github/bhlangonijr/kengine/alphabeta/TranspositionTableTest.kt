@@ -1,15 +1,15 @@
 package com.github.bhlangonijr.kengine.alphabeta
 
+import com.github.bhlangonijr.chesslib.Bitboard
 import com.github.bhlangonijr.chesslib.Board
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import kotlin.random.Random
 
 @ExperimentalStdlibApi
 class TranspositionTableTest {
 
-    private val keys = intArrayOf(
+    private val keys = longArrayOf(
             -702565069, -651716404, -90772002, 139827217, -818005229, 1941803680, -1748144377, 596276289,
             1921378528, 1368035031, -1425636917, -575780564, 1409290471, 845303300, 1136883922, -1430851484,
             924912986, 92095816, -1065598504, -748528041, 1089599880, -723160118, 598513820, -1833342420,
@@ -36,27 +36,40 @@ class TranspositionTableTest {
         board.loadFromFen("r1b1kb1r/ppp2ppp/8/4n3/4n3/PPP1P3/6PP/RNBK1BNR w kq - 0 19")
         val tt = TranspositionTable(8)
 
-        tt.put(board.hashCode(), 100, 10, TranspositionTable.NodeType.EXACT)
+        tt.put(board.incrementalHashKey, 100, 10, TranspositionTable.NodeType.EXACT, 1)
 
-        val entry = tt.get(board.hashCode())
+        val entry = tt.get(board.incrementalHashKey, 1)
 
-        assertEquals(entry?.key, board.hashCode())
+        assertEquals(100L, entry?.value)
 
         for (k in keys) {
-            tt.put(k, Random.nextLong(1000), Random.nextInt(1000), TranspositionTable.NodeType.EXACT)
+            tt.put(k, k % 3, (k % 3).toInt(), TranspositionTable.NodeType.UPPERBOUND, 1)
         }
 
         for (k in keys) {
-            val e = tt.get(k)
-            assertEquals(k, e?.key)
+            val e = tt.get(k, 1)
+            assertEquals(k % 3, e?.value)
+            assertEquals((k % 3).toInt(), e?.depth)
+            assertEquals(TranspositionTable.NodeType.UPPERBOUND, e?.nodeType)
         }
 
         tt.clear()
 
         for (k in keys) {
-            val e = tt.get(k)
+            val e = tt.get(k, 1)
             assertNull(e)
         }
+    }
+
+    @Test
+    fun `test numbers`() {
+
+        val r = -5L
+        val b = r.and(0xFFFFFFFFL).shl(32)
+        println("${Bitboard.bitboardToString(r)}\n = \n${Bitboard.bitboardToString(b)}")
+
+        val c = b.ushr(32).and(0xFFFFFFFFL).toInt()
+        assertEquals(r, c.toLong())
     }
 
 

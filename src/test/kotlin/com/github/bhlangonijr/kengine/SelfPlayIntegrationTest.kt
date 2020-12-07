@@ -9,6 +9,7 @@ import com.github.bhlangonijr.kengine.alphabeta.AlphaBetaSearch
 import com.github.bhlangonijr.kengine.montecarlo.MonteCarloSearch
 import org.junit.Test
 
+
 @ExperimentalStdlibApi
 class SelfPlayIntegrationTest {
 

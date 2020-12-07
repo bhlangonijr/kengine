@@ -26,7 +26,6 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
     override fun rooSearch(state: SearchState): Move {
 
         val fen = state.board.fen
-        transpositionTable.generation++
         state.moveScore.clear()
         var bestMove = emptyMove
         for (i in 1..min(MAX_DEPTH, state.params.depth)) {
@@ -55,7 +54,7 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         if (state.shouldStop()) {
             return 0L
         }
-        if (board.isRepetition && ply > 0) {
+        if (board.isRepetition) {
             return 0L
         }
 
@@ -63,34 +62,40 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         var newAlpha = alpha
         var newBeta = beta
         var moveCounter = 0
+        val currentAlpha = max(alpha, -Long.MAX_VALUE + ply)
+        val currentBeta = min(beta, Long.MAX_VALUE - (ply + 1))
 
-        val entry = transpositionTable.get(board.hashCode())
-        if (entry != null && entry.depth >= depth && ply > 0) {
+        val entry = transpositionTable.get(board.incrementalHashKey, ply)
+        if (entry != null && entry.depth >= depth && ply > 0 && alpha == beta - 1) {
             when (entry.nodeType) {
                 TranspositionTable.NodeType.EXACT -> {
                     return entry.value
                 }
                 TranspositionTable.NodeType.LOWERBOUND -> {
-                    newAlpha = max(alpha, entry.value)
+                    if (entry.value > currentBeta) {
+                        return entry.value
+                    }
                 }
                 TranspositionTable.NodeType.UPPERBOUND -> {
-                    newBeta = min(beta, entry.value)
+                    if (entry.value <= currentAlpha) {
+                        return entry.value
+                    }
                 }
             }
         }
 
         val isKingAttacked = board.isKingAttacked
 
-        if (depth > 1 && beta <= evaluator.evaluate(state, board) &&
+        if (depth > 1 && alpha == beta - 1 && beta <= evaluator.evaluate(state, board) &&
                 !isKingAttacked && isNullMoveAllowed(board)) {
 
             board.doNullMove()
             val score = -search(board, -newBeta, -newBeta + 1, depth - 3, ply + 1, state)
             board.undoMove()
             if (score >= newBeta) {
-                transpositionTable.put(board.hashCode(), score, depth,
-                        TranspositionTable.NodeType.LOWERBOUND)
-                return newBeta
+                transpositionTable.put(board.incrementalHashKey, score, depth,
+                        TranspositionTable.NodeType.LOWERBOUND, ply)
+                return score
             }
         }
 
@@ -103,7 +108,7 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             var score: Long
 
             if (moveCounter == 0) {
-                val newDepth = if (isKingAttacked) depth else depth - 1
+                val newDepth = if (isKingAttacked) depth + 1 else depth - 1
                 score = -search(board, -newBeta, -newAlpha, newDepth, ply + 1, state)
             } else {
                 val newDepth = if (isKingAttacked) depth else depth - 1
@@ -118,8 +123,8 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
                 state.moveScore[move.toString()] = score
             }
             if (score >= newBeta) {
-                transpositionTable.put(board.hashCode(), score, depth,
-                        TranspositionTable.NodeType.LOWERBOUND)
+                transpositionTable.put(board.incrementalHashKey, score, depth,
+                        TranspositionTable.NodeType.LOWERBOUND, ply)
                 return score
             }
             if (score > bestScore) {
@@ -139,7 +144,7 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             bestScore > alpha -> TranspositionTable.NodeType.EXACT
             else -> TranspositionTable.NodeType.UPPERBOUND
         }
-        transpositionTable.put(board.hashCode(), bestScore, depth, nodeType)
+        transpositionTable.put(board.incrementalHashKey, bestScore, depth, nodeType, ply)
 
         return bestScore
     }
@@ -151,7 +156,7 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         if (state.shouldStop() || ply >= MAX_DEPTH) {
             return 0
         }
-        if (board.isRepetition && ply > 0) {
+        if (board.isRepetition) {
             return 0
         }
         var newAlpha = alpha

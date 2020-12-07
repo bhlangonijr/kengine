@@ -6,7 +6,7 @@ import kotlin.math.min
 
 const val PAWN_VALUE = 100L
 const val BISHOP_VALUE = 320L
-const val KNIGHT_VALUE = 330L
+const val KNIGHT_VALUE = 315L
 const val ROOK_VALUE = 500L
 const val QUEEN_VALUE = 900L
 const val MAX_VALUE = 40000L
@@ -92,7 +92,15 @@ class MaterialEval : Evaluator {
 
     override fun evaluate(state: SearchState, board: Board): Long {
 
-        return scoreMaterial(board) + scorePieceSquare(board)
+        if (board.isInsufficientMaterial) {
+            return 0
+        }
+        val materialSide = scoreMaterial(board, board.sideToMove)
+        val materialOther = scoreMaterial(board, board.sideToMove.flip())
+
+        return (materialSide - materialOther) +
+                (calculatePieceSquare(board, board.sideToMove, materialSide) -
+                        calculatePieceSquare(board, board.sideToMove.flip(), materialOther))
     }
 
     override fun pieceStaticValue(piece: Piece): Long {
@@ -132,17 +140,20 @@ class MaterialEval : Evaluator {
 
     fun scorePieceSquare(board: Board, player: Side): Long {
 
-        return calculatePieceSquare(board, player) - calculatePieceSquare(board, player.flip())
+        return calculatePieceSquare(board, player, scoreMaterial(board, player)) -
+                calculatePieceSquare(board, player.flip(), scoreMaterial(board, player.flip()))
     }
 
-    private fun calculatePieceSquare(board: Board, side: Side): Long {
+    private val maxMaterial = PAWN_VALUE * 8 + KNIGHT_VALUE * 2 + BISHOP_VALUE * 2 + ROOK_VALUE * 2 + QUEEN_VALUE
 
-        val maxMoves = 40
-        val phase = min(maxMoves, board.moveCounter)
+    private fun calculatePieceSquare(board: Board, side: Side, material: Long): Long {
+
+        val phase = min(maxMaterial, material)
         var sum = 0L
 
         var pieces = board.getBitboard(side)
                 .and(board.getBitboard(Piece.make(side, PieceType.KING)).inv())
+
         while (pieces != 0L) {
             val index = Bitboard.bitScanForward(pieces)
             pieces = Bitboard.extractLsb(pieces)
@@ -151,8 +162,8 @@ class MaterialEval : Evaluator {
         }
 
         board.getPieceLocation(Piece.make(side, PieceType.KING)).forEach {
-            sum += (maxMoves - phase) * KING_OPENING_PST[getIndex(side, it)] / maxMoves +
-                    phase * KING_END_PST[getIndex(side, it)] / maxMoves
+            sum += (maxMaterial - phase) * KING_OPENING_PST[getIndex(side, it)] / maxMaterial +
+                    phase * KING_END_PST[getIndex(side, it)] / maxMaterial
         }
 
         return sum
