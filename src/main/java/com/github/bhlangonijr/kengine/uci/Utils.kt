@@ -33,7 +33,7 @@ fun mergeTokens(tokens: List<String>, start: Int, end: Int, separator: String): 
 fun getString(tokens: List<String>, startToken: String, defaultValue: String): String {
 
     val start = tokens.indexOf(startToken)
-    if (start == -1) {
+    if (start == -1 || tokens.size - 1 < start + 1) {
         return defaultValue
     }
     return mergeTokens(tokens, start + 1, start + 1, "")
