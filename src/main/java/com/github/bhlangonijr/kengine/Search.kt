@@ -20,7 +20,10 @@ class Search(val board: Board, val engine: SearchEngine) {
         if (moves.isNotBlank()) {
             val moveList = MoveList(fen)
             moveList.loadFromText(moves)
-            board.loadFromFen(moveList.getFen(moveList.size))
+            board.loadFromFen(fen)
+            for (move in moveList) {
+                board.doMove(move)
+            }
         } else {
             board.loadFromFen(fen)
         }
@@ -31,7 +34,10 @@ class Search(val board: Board, val engine: SearchEngine) {
         if (moves.isNotBlank()) {
             val moveList = MoveList()
             moveList.loadFromText(moves)
-            board.loadFromFen(moveList.getFen(moveList.size))
+            board.loadFromFen(board.context.startFEN)
+            for (move in moveList) {
+                board.doMove(move)
+            }
         } else {
             reset()
         }
