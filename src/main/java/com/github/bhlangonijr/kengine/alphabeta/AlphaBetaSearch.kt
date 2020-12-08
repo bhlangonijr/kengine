@@ -28,14 +28,35 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         val fen = state.board.fen
         state.moveScore.clear()
         var bestMove = emptyMove
+        var alpha = -MAX_VALUE
+        var beta = MAX_VALUE
+        var score = -MAX_VALUE
         for (i in 1..min(MAX_DEPTH, state.params.depth)) {
-            val score = search(state.board, -MAX_VALUE, MAX_VALUE, i, 0, state)
-            if (state.shouldStop() && bestMove != emptyMove) break
-            bestMove = state.pv[0]
-            val nodes = state.nodes.get()
-            val time = System.currentTimeMillis() - state.params.initialTime
-            val nps = nodes / (max(time / 1000, 1))
-            println("info depth $i score cp $score time $time nodes $nodes nps $nps pv ${state.pvLine()}")
+
+            var aspirationWindow = 16
+            if (i > 3) {
+                alpha = max(score - aspirationWindow, -MAX_VALUE)
+                beta = min(score + aspirationWindow, MAX_VALUE)
+            }
+            while (true) {
+                score = search(state.board, alpha, beta, i, 0, state)
+                if (state.shouldStop() && bestMove != emptyMove) break
+                bestMove = state.pv[0]
+                val nodes = state.nodes.get()
+                val time = System.currentTimeMillis() - state.params.initialTime
+                val nps = nodes / (max(time / 1000, 1))
+
+                if (score <= alpha) {
+                    alpha = max(score - aspirationWindow, -MAX_VALUE)
+                    beta = (alpha + beta) / 2
+                } else if (score >= beta) {
+                    beta = min(score + aspirationWindow, MAX_VALUE)
+                } else {
+                    println("info depth $i score cp $score time $time nodes $nodes nps $nps pv ${state.pvLine()}")
+                    break
+                }
+                aspirationWindow += aspirationWindow / 4
+            }
         }
         println("bestmove $bestMove")
         if (state.board.fen != fen) {
