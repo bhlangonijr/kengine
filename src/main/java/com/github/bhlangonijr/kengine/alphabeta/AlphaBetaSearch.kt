@@ -2,7 +2,7 @@ package com.github.bhlangonijr.kengine.alphabeta
 
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Piece
-import com.github.bhlangonijr.chesslib.Side
+import com.github.bhlangonijr.chesslib.PieceType
 import com.github.bhlangonijr.chesslib.Square
 import com.github.bhlangonijr.chesslib.move.Move
 import com.github.bhlangonijr.kengine.SearchEngine
@@ -45,7 +45,7 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         return bestMove
     }
 
-    private fun search(board: Board, alpha: Long, beta: Long, depth: Int, ply: Int, state: SearchState): Long {
+    private fun search(board: Board, alpha: Long, beta: Long, depth: Int, ply: Int, state: SearchState, doNullMove: Boolean = true): Long {
 
         if (depth <= 0 || ply >= MAX_DEPTH) {
             return quiesce(board, alpha, beta, ply, state)
@@ -59,25 +59,27 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         }
 
         var bestScore = -Long.MAX_VALUE
-        var newAlpha = alpha
-        var newBeta = beta
+        var newAlpha = max(alpha, -Long.MAX_VALUE + ply)
+        var newBeta = min(beta, Long.MAX_VALUE - (ply + 1))
         var moveCounter = 0
-        val currentAlpha = max(alpha, -Long.MAX_VALUE + ply)
-        val currentBeta = min(beta, Long.MAX_VALUE - (ply + 1))
+
+        if (newAlpha >= newBeta) {
+            return newAlpha
+        }
 
         val entry = transpositionTable.get(board.incrementalHashKey, ply)
-        if (entry != null && entry.depth >= depth && ply > 0 && alpha == beta - 1) {
+        if (entry != null && entry.depth >= depth && ply > 0) {
             when (entry.nodeType) {
                 TranspositionTable.NodeType.EXACT -> {
                     return entry.value
                 }
                 TranspositionTable.NodeType.LOWERBOUND -> {
-                    if (entry.value > currentBeta) {
+                    if (entry.value > newBeta) {
                         return entry.value
                     }
                 }
                 TranspositionTable.NodeType.UPPERBOUND -> {
-                    if (entry.value <= currentAlpha) {
+                    if (entry.value <= newAlpha) {
                         return entry.value
                     }
                 }
@@ -86,11 +88,11 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
 
         val isKingAttacked = board.isKingAttacked
 
-        if (depth > 1 && alpha == beta - 1 && beta <= evaluator.evaluate(state, board) &&
+        if (doNullMove && depth > 1 && newBeta <= evaluator.evaluate(state, board) &&
                 !isKingAttacked && isNullMoveAllowed(board)) {
 
             board.doNullMove()
-            val score = -search(board, -newBeta, -newBeta + 1, depth - 3, ply + 1, state)
+            val score = -search(board, -newBeta, -newBeta + 1, depth - 3, ply + 1, state, false)
             board.undoMove()
             if (score >= newBeta) {
                 transpositionTable.put(board.incrementalHashKey, score, depth,
@@ -239,9 +241,8 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
     }
 
     private fun isNullMoveAllowed(board: Board): Boolean =
-            board.getBitboard(Side.WHITE).xor(board.getBitboard(Piece.WHITE_PAWN)
-                    .or(board.getBitboard(Piece.WHITE_KING))) == 0L ||
-                    board.getBitboard(Side.BLACK).xor(board.getBitboard(Piece.BLACK_PAWN)
-                            .or(board.getBitboard(Piece.BLACK_KING))) == 0L
+            board.getBitboard(Piece.make(board.sideToMove, PieceType.KING)) or
+                    board.getBitboard(Piece.make(board.sideToMove, PieceType.PAWN)) != board.getBitboard(board.sideToMove)
+
 
 }
