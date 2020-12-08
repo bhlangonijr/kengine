@@ -163,7 +163,8 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         }
         var newAlpha = alpha
         var moveCounter = 0
-        var bestScore = evaluator.evaluate(state, board)
+
+        var bestScore = max(evaluator.evaluate(state, board), alpha)
 
         if (bestScore >= beta) {
             return beta
@@ -192,9 +193,6 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             }
         }
 
-        if (moveCounter == 0 && board.isKingAttacked) {
-            return -MATE_VALUE + ply
-        }
         return bestScore
     }
 
