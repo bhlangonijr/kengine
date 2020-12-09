@@ -45,14 +45,16 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
                 val nodes = state.nodes.get()
                 val time = System.currentTimeMillis() - state.params.initialTime
                 val nps = nodes / (max(time / 1000, 1))
-
+                val uciDetails = "time $time nodes $nodes nps $nps pv ${state.pvLine()}"
                 if (score <= alpha) {
                     alpha = max(score - aspirationWindow, -MAX_VALUE)
                     beta = (alpha + beta) / 2
+                    println("info depth $i score cp $score upperbound $uciDetails")
                 } else if (score >= beta) {
                     beta = min(score + aspirationWindow, MAX_VALUE)
+                    println("info depth $i score cp $score lowerbound $uciDetails")
                 } else {
-                    println("info depth $i score cp $score time $time nodes $nodes nps $nps pv ${state.pvLine()}")
+                    println("info depth $i score cp $score $uciDetails")
                     break
                 }
                 aspirationWindow += aspirationWindow / 4
@@ -174,12 +176,11 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
 
     fun quiesce(board: Board, alpha: Long, beta: Long, ply: Int, state: SearchState): Long {
 
-        state.nodes.incrementAndGet()
-
         if (state.shouldStop() || ply >= MAX_DEPTH) {
             return 0
         }
-        if (board.isRepetition) {
+        state.nodes.incrementAndGet()
+        if (board.isRepetition || board.isInsufficientMaterial) {
             return 0
         }
         var newAlpha = alpha
@@ -251,11 +252,9 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         val attackingPiece = state.board.getPiece(move.from)
 
         return when {
-            attackedPiece != Piece.NONE -> (evaluator.pieceStaticValue(attackedPiece) -
-                    evaluator.pieceStaticValue(attackingPiece)) + 10000
+            attackedPiece != Piece.NONE -> (evaluator.pieceStaticValue(attackedPiece)) + 10000
             move.promotion != null -> evaluator.pieceStaticValue(move.promotion) * 10
-            else -> (evaluator.pieceSquareStaticValue(attackingPiece, move.to) -
-                    evaluator.pieceSquareStaticValue(attackingPiece, move.from))
+            else -> evaluator.pieceSquareStaticValue(attackingPiece, move.to)
         }
     }
 
