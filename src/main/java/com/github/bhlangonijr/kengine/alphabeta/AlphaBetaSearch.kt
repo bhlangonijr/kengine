@@ -5,12 +5,10 @@ import com.github.bhlangonijr.chesslib.Piece
 import com.github.bhlangonijr.chesslib.PieceType
 import com.github.bhlangonijr.chesslib.Square
 import com.github.bhlangonijr.chesslib.move.Move
+import com.github.bhlangonijr.chesslib.move.MoveGenerator
 import com.github.bhlangonijr.kengine.SearchEngine
 import com.github.bhlangonijr.kengine.SearchState
-import com.github.bhlangonijr.kengine.eval.Evaluator
-import com.github.bhlangonijr.kengine.eval.MATE_VALUE
-import com.github.bhlangonijr.kengine.eval.MAX_VALUE
-import com.github.bhlangonijr.kengine.eval.MaterialEval
+import com.github.bhlangonijr.kengine.eval.*
 import kotlin.math.max
 import kotlin.math.min
 
@@ -83,7 +81,7 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
 
         var bestScore = -Long.MAX_VALUE
         var newAlpha = max(alpha, -Long.MAX_VALUE + ply)
-        var newBeta = min(beta, Long.MAX_VALUE - (ply + 1))
+        val newBeta = min(beta, Long.MAX_VALUE - (ply + 1))
         var moveCounter = 0
 
         if (newAlpha >= newBeta) {
@@ -111,7 +109,7 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
 
         val isKingAttacked = board.isKingAttacked
 
-        if (doNullMove && depth > 1 && newBeta <= evaluator.evaluate(state, board) &&
+        if (doNullMove && depth > 3 && newBeta <= evaluator.evaluate(state, board) &&
                 !isKingAttacked && isNullMoveAllowed(board)) {
 
             board.doNullMove()
@@ -180,38 +178,34 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             return 0
         }
         state.nodes.incrementAndGet()
-        if (board.isRepetition || board.isInsufficientMaterial) {
+        if (board.isRepetition) {
             return 0
         }
-        var newAlpha = alpha
         var moveCounter = 0
-
-        var bestScore = max(evaluator.evaluate(state, board), alpha)
+        val eval = evaluator.evaluate(state, board)
+        var bestScore = max(eval, alpha)
 
         if (bestScore >= beta) {
             return beta
         }
-        if (alpha < bestScore) {
-            newAlpha = bestScore
-        }
 
         val moves = generateMoves(state, ply, true)
         for (move in moves) {
+            if (move.promotion != Piece.NONE && move.promotion.pieceType != PieceType.QUEEN) {
+                continue
+            }
             if (!board.doMove(move)) {
                 continue
             }
             moveCounter++
-            val score = -quiesce(board, -beta, -newAlpha, ply + 1, state)
+            val score = -quiesce(board, -beta, -bestScore, ply + 1, state)
             board.undoMove()
             if (score >= beta) {
                 return score
             }
             if (score > bestScore) {
                 bestScore = score
-                if (score > newAlpha) {
-                    newAlpha = score
-                    state.updatePv(move, ply)
-                }
+                state.updatePv(move, ply)
             }
         }
 
@@ -252,8 +246,8 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         val attackingPiece = state.board.getPiece(move.from)
 
         return when {
-            attackedPiece != Piece.NONE -> (evaluator.pieceStaticValue(attackedPiece)) + 10000
-            move.promotion != null -> evaluator.pieceStaticValue(move.promotion) * 10
+            attackedPiece != Piece.NONE -> evaluator.pieceStaticValue(attackedPiece)
+            move.promotion != Piece.NONE -> evaluator.pieceStaticValue(move.promotion)
             else -> evaluator.pieceSquareStaticValue(attackingPiece, move.to)
         }
     }
