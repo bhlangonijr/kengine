@@ -15,7 +15,7 @@ apply plugin: 'groovy'
 apply plugin: 'maven'
 
 group 'com.github.bhlangonijr.kengine'
-version '0.1.1'
+version '1.0.0'
 
 jar {
     manifest {
