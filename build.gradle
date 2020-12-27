@@ -1,25 +1,19 @@
-buildscript {
-    ext.kotlin_version = '1.4.10'
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.4.21'
+    id 'java-library'
+    id 'maven'
+    id 'idea'
+    id 'eclipse'
 }
 
-apply plugin: 'kotlin'
-apply plugin: 'eclipse'
-apply plugin: 'idea'
-apply plugin: 'groovy'
-apply plugin: 'maven'
-
 group 'com.github.bhlangonijr.kengine'
-version '1.0.0'
+version '1.0.1'
 
 jar {
     manifest {
-        attributes 'Main-Class': 'com.github.bhlangonijr.kengine.MainKt'
+        attributes 'Main-Class': 'com.github.bhlangonijr.kengine.MainKt',
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version
     }
     from {
         configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
@@ -29,14 +23,16 @@ jar {
 repositories {
     mavenCentral()
     mavenLocal()
+    jcenter()
     maven { url 'https://jitpack.io' }
 }
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    compile "com.github.bhlangonijr:chesslib:1.2.5"
+    compile platform('org.jetbrains.kotlin:kotlin-bom')
+    compile 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+    compile 'com.github.bhlangonijr:chesslib:1.2.5'
 
-    testCompile "junit:junit:4.12"
+    testImplementation "junit:junit:4.12"
 }
 
 compileKotlin {
