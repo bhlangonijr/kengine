@@ -5,7 +5,7 @@ import com.github.bhlangonijr.kengine.montecarlo.MonteCarloSearch
 import com.github.bhlangonijr.kengine.uci.Uci
 import kotlin.system.exitProcess
 
-const val VERSION = "1.0.1"
+const val VERSION = "1.0.2"
 const val NAME = "kengine"
 const val AUTHOR = "bhlangonijr"
 

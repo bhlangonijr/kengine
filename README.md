@@ -32,7 +32,7 @@ $ ./kengine.sh
 Type uci and hit enter to display engine info.
 ```shell script
 $ uci 
-id name kengine 1.0.1
+id name kengine 1.0.2
 id author bhlangonijr
 option name Hash type spin default 128 min 1 max 16384
 option name Threads type spin default 1 min 1 max 128
