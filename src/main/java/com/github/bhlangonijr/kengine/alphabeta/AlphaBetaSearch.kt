@@ -85,7 +85,7 @@ class AlphaBetaSearch constructor(
             return 0L
         }
 
-        var bestScore = alpha
+        var bestScore = -Long.MAX_VALUE
         var newAlpha = max(alpha, -Long.MAX_VALUE + ply)
         val newBeta = min(beta, Long.MAX_VALUE - (ply + 1))
         var moveCounter = 0
@@ -184,7 +184,7 @@ class AlphaBetaSearch constructor(
                 state: SearchState): Long {
 
         if (state.shouldStop() || ply >= MAX_DEPTH) {
-            return evaluator.evaluate(state, board)
+            return 0
         }
         state.nodes.incrementAndGet()
         if (board.isRepetition) {
@@ -210,16 +210,12 @@ class AlphaBetaSearch constructor(
             val score = -quiesce(board, -beta, -bestScore, ply + 1, state)
             board.undoMove()
             if (score >= beta) {
-                return beta
+                return score
             }
             if (score > bestScore) {
                 bestScore = score
                 state.updatePv(move, ply)
             }
-        }
-
-        if (moveCounter == 0) {
-            return eval
         }
 
         return bestScore
