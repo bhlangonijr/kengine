@@ -80,7 +80,7 @@ class AlphaBetaSearchTest {
         val tt = TranspositionTable()
         val search = AlphaBetaSearch(transpositionTable = tt)
         val bestMove = search.rooSearch(state)
-        assertEquals(Move(Square.G8, Square.F6), bestMove)
+        assertEquals(Move(Square.B8, Square.C6), bestMove)
     }
 
     @Test

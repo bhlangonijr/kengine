@@ -2,6 +2,7 @@ package com.github.bhlangonijr.kengine.eval
 
 import com.github.bhlangonijr.chesslib.*
 import com.github.bhlangonijr.kengine.SearchState
+import java.lang.Long.max
 import kotlin.math.min
 
 const val PAWN_VALUE = 100L
@@ -147,12 +148,11 @@ class MaterialEval : Evaluator {
     private val maxMaterial = PAWN_VALUE * 8 + KNIGHT_VALUE * 2 + BISHOP_VALUE * 2 + ROOK_VALUE * 2 + QUEEN_VALUE
 
     private fun calculatePieceSquare(board: Board, side: Side, material: Long): Long {
-
-        val phase = min(maxMaterial, material)
+        val phase = max(0, min(maxMaterial, material))
         var sum = 0L
 
         var pieces = board.getBitboard(side)
-                .and(board.getBitboard(Piece.make(side, PieceType.KING)).inv())
+            .and(board.getBitboard(Piece.make(side, PieceType.KING)).inv())
 
         while (pieces != 0L) {
             val index = Bitboard.bitScanForward(pieces)
@@ -160,10 +160,11 @@ class MaterialEval : Evaluator {
             val sq = Square.squareAt(index)
             sum += pieceSquareStaticValue(board.getPiece(sq), sq)
         }
-
-        board.getPieceLocation(Piece.make(side, PieceType.KING)).forEach {
-            sum += (maxMaterial - phase) * KING_OPENING_PST[getIndex(side, it)] / maxMaterial +
-                    phase * KING_END_PST[getIndex(side, it)] / maxMaterial
+        
+        board.getPieceLocation(Piece.make(side, PieceType.KING)).forEach { square ->
+            val openingValue = KING_OPENING_PST[getIndex(side, square)]
+            val endgameValue = KING_END_PST[getIndex(side, square)]
+            sum += ((maxMaterial - phase) * openingValue + phase * endgameValue) / maxMaterial
         }
 
         return sum

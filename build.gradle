@@ -1,13 +1,13 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.4.21'
+    id 'org.jetbrains.kotlin.jvm' version '1.8.20'
     id 'java-library'
-    id 'maven'
     id 'idea'
     id 'eclipse'
+    id 'maven-publish'
 }
 
 group 'com.github.bhlangonijr.kengine'
-version '1.0.2'
+version '1.0.3'
 
 jar {
     manifest {
@@ -16,23 +16,23 @@ jar {
                 'Implementation-Version': project.version
     }
     from {
-        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 repositories {
     mavenCentral()
     mavenLocal()
-    jcenter()
     maven { url 'https://jitpack.io' }
 }
 
 dependencies {
-    compile platform('org.jetbrains.kotlin:kotlin-bom')
-    compile 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
-    compile 'com.github.bhlangonijr:chesslib:1.3.3'
+    api platform('org.jetbrains.kotlin:kotlin-bom')
+    api 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+    api 'com.github.bhlangonijr:chesslib:1.3.4'
 
-    testImplementation "junit:junit:4.12"
+    testImplementation 'junit:junit:4.13.1'
 }
 
 compileKotlin {

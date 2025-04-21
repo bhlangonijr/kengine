@@ -6,6 +6,7 @@ import com.github.bhlangonijr.chesslib.Square
 import com.github.bhlangonijr.chesslib.move.Move
 import com.github.bhlangonijr.chesslib.move.MoveList
 import com.github.bhlangonijr.kengine.alphabeta.MAX_DEPTH
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 class SearchState(val params: SearchParams, val board: Board) {
@@ -21,6 +22,20 @@ class SearchState(val params: SearchParams, val board: Board) {
     val moveScore = HashMap<String, Long>()
 
     val pv = Array(MAX_DEPTH) { noMove }
+
+    val cachedMoveScores: MutableMap<Move, Long> = ConcurrentHashMap()
+
+    fun clearCachedMoveScores() {
+        cachedMoveScores.clear()
+    }
+
+    fun updateCachedMoveScore(move: Move, score: Long) {
+        cachedMoveScores[move] = score
+    }
+
+    fun getCachedMoveScore(move: Move): Long? {
+        return cachedMoveScores[move]
+    }
 
     fun shouldStop(): Boolean {
 

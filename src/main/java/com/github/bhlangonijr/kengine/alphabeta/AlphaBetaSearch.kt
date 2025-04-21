@@ -5,7 +5,6 @@ import com.github.bhlangonijr.chesslib.Piece
 import com.github.bhlangonijr.chesslib.PieceType
 import com.github.bhlangonijr.chesslib.Square
 import com.github.bhlangonijr.chesslib.move.Move
-import com.github.bhlangonijr.chesslib.move.MoveGenerator
 import com.github.bhlangonijr.kengine.SearchEngine
 import com.github.bhlangonijr.kengine.SearchState
 import com.github.bhlangonijr.kengine.eval.*
@@ -14,10 +13,11 @@ import kotlin.math.min
 
 
 const val MAX_DEPTH = 100
-
-@ExperimentalStdlibApi
-class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEval(),
-                                  private var transpositionTable: TranspositionTable = TranspositionTable()) : SearchEngine {
+@OptIn(ExperimentalStdlibApi::class)
+class AlphaBetaSearch constructor(
+    private var evaluator: Evaluator = MaterialEval(),
+    private var transpositionTable: TranspositionTable = TranspositionTable()
+) : SearchEngine {
 
     private val emptyMove = Move(Square.NONE, Square.NONE)
 
@@ -66,7 +66,13 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         return bestMove
     }
 
-    private fun search(board: Board, alpha: Long, beta: Long, depth: Int, ply: Int, state: SearchState, doNullMove: Boolean = true): Long {
+    private fun search(board: Board,
+                       alpha: Long,
+                       beta: Long,
+                       depth: Int,
+                       ply: Int,
+                       state: SearchState,
+                       doNullMove: Boolean = true): Long {
 
         if (depth <= 0 || ply >= MAX_DEPTH) {
             return quiesce(board, alpha, beta, ply, state)
@@ -79,7 +85,7 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             return 0L
         }
 
-        var bestScore = -Long.MAX_VALUE
+        var bestScore = alpha
         var newAlpha = max(alpha, -Long.MAX_VALUE + ply)
         val newBeta = min(beta, Long.MAX_VALUE - (ply + 1))
         var moveCounter = 0
@@ -109,8 +115,8 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
 
         val isKingAttacked = board.isKingAttacked
 
-        if (doNullMove && depth > 3 && newBeta <= evaluator.evaluate(state, board) &&
-                !isKingAttacked && isNullMoveAllowed(board)) {
+        if (doNullMove && depth > 3 && (newBeta - evaluator.evaluate(state, board)) > 200 &&
+            !isKingAttacked && isNullMoveAllowed(board)) {
 
             board.doNullMove()
             val score = -search(board, -newBeta, -newBeta + 1, depth - 3, ply + 1, state, false)
@@ -130,11 +136,10 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             moveCounter++
             var score: Long
 
-            if (moveCounter == 0) {
-                val newDepth = if (isKingAttacked) depth + 1 else depth - 1
+            val newDepth = if (isKingAttacked) depth else depth - 1
+            if (moveCounter == 1) {
                 score = -search(board, -newBeta, -newAlpha, newDepth, ply + 1, state)
             } else {
-                val newDepth = if (isKingAttacked) depth else depth - 1
                 score = -search(board, -newAlpha - 1, -newAlpha, newDepth, ply + 1, state)
                 if (score in (newAlpha + 1) until newBeta) {
                     score = -search(board, -newBeta, -newAlpha, newDepth, ply + 1, state)
@@ -172,10 +177,14 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
         return bestScore
     }
 
-    fun quiesce(board: Board, alpha: Long, beta: Long, ply: Int, state: SearchState): Long {
+    fun quiesce(board: Board,
+                alpha: Long,
+                beta: Long,
+                ply: Int,
+                state: SearchState): Long {
 
         if (state.shouldStop() || ply >= MAX_DEPTH) {
-            return 0
+            return evaluator.evaluate(state, board)
         }
         state.nodes.incrementAndGet()
         if (board.isRepetition) {
@@ -201,7 +210,7 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             val score = -quiesce(board, -beta, -bestScore, ply + 1, state)
             board.undoMove()
             if (score >= beta) {
-                return score
+                return beta
             }
             if (score > bestScore) {
                 bestScore = score
@@ -209,52 +218,78 @@ class AlphaBetaSearch constructor(private var evaluator: Evaluator = MaterialEva
             }
         }
 
+        if (moveCounter == 0) {
+            return eval
+        }
+
         return bestScore
     }
 
     private fun generateMoves(state: SearchState, ply: Int, quiesce: Boolean): List<Move> {
-
         return when {
-            quiesce -> orderMoves(state, state.board.pseudoLegalCaptures())
+            quiesce -> orderQuiescenceMoves(state, state.board.pseudoLegalCaptures())
             ply == 0 -> orderRootMoves(state, state.board.pseudoLegalMoves())
             else -> orderMoves(state, state.board.pseudoLegalMoves())
         }
     }
 
     private fun orderMoves(state: SearchState, moves: List<Move>): List<Move> {
+        if (moves.isEmpty()) return moves
 
-        if (state.moveScore.size == 0) return moves
-        return moves.sortedWith { o1, o2 ->
-            (moveScore(o1, state) - moveScore(o2, state)).toInt()
-        }.reversed()
+        val scoredMoves = moves.map { move ->
+            move to (state.getCachedMoveScore(move) ?: moveScore(move, state).also {
+                state.updateCachedMoveScore(move, it)
+            })
+        }
+
+        return scoredMoves.sortedByDescending { it.second }.map { it.first }
     }
 
     private fun orderRootMoves(state: SearchState, moves: List<Move>): List<Move> {
+        if (moves.isEmpty()) return moves
 
-        if (state.moveScore.size == 0) return moves
-        return moves.sortedWith { o1, o2 ->
-            (rootMoveScore(o1, state) - rootMoveScore(o2, state)).toInt()
-        }.reversed()
+        val scoredMoves = moves.map { move ->
+            move to (state.cachedMoveScores[move] ?: rootMoveScore(move, state))
+        }
+
+        return scoredMoves.sortedByDescending { it.second }.map { it.first }
+    }
+
+    private fun orderQuiescenceMoves(state: SearchState, moves: List<Move>): List<Move> {
+        if (moves.isEmpty()) return moves
+
+        val scoredMoves = moves.map { move ->
+            move to (state.cachedMoveScores[move] ?: moveScore(move, state))
+        }
+
+        return scoredMoves.sortedByDescending { it.second }.map { it.first }
     }
 
     private fun rootMoveScore(move: Move, state: SearchState) = state.moveScore[move.toString()] ?: -Long.MAX_VALUE
 
-    //mvv-lva
     private fun moveScore(move: Move, state: SearchState): Long {
-
         val attackedPiece = state.board.getPiece(move.to)
         val attackingPiece = state.board.getPiece(move.from)
 
         return when {
-            attackedPiece != Piece.NONE -> evaluator.pieceStaticValue(attackedPiece)
+            attackedPiece != Piece.NONE -> evaluator.pieceStaticValue(attackedPiece) * 10 - evaluator.pieceStaticValue(attackingPiece)
             move.promotion != Piece.NONE -> evaluator.pieceStaticValue(move.promotion)
             else -> evaluator.pieceSquareStaticValue(attackingPiece, move.to)
         }
     }
+    private fun isNullMoveAllowed(board: Board): Boolean {
+        val sideToMove = board.sideToMove
+        val kingBitboard = board.getBitboard(Piece.make(sideToMove, PieceType.KING))
+        val pawnBitboard = board.getBitboard(Piece.make(sideToMove, PieceType.PAWN))
+        val allPiecesBitboard = board.getBitboard(sideToMove)
 
-    private fun isNullMoveAllowed(board: Board): Boolean =
-            board.getBitboard(Piece.make(board.sideToMove, PieceType.KING)) or
-                    board.getBitboard(Piece.make(board.sideToMove, PieceType.PAWN)) != board.getBitboard(board.sideToMove)
+        if ((kingBitboard or pawnBitboard) == allPiecesBitboard) {
+            return false
+        }
+
+        val totalPieces = board.bitboard.countOneBits()
+        return totalPieces > 6
+    }
 
 
 }
